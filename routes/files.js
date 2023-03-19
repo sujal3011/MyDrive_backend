@@ -28,15 +28,21 @@ conn.once('open', () => {
 // Uploading a new file
 
 router.post('/upload', fetchUser, upload.single('file'), async (req, res) => {
-  // res.json({ file: req.file });
-  // console.log(req.file);
 
-  const newFile = new File({
-    userId: req.user.id, original_name: req.file.originalname, file_name: req.file.filename, path: req.header('path'), uploadDate: req.file.uploadDate
-  })
+  try {
 
-  const savedFile = await newFile.save();
-  res.json(savedFile);
+    const newFile = new File({
+      userId: req.user.id, original_name: req.file.originalname, file_name: req.file.filename, path: req.header('path'), uploadDate: req.file.uploadDate
+    })
+  
+    const savedFile = await newFile.save();
+    res.json(savedFile);
+    
+  } catch (error) {
+    res.status(500).send(error)
+  }
+  
+  
 
 })
 
@@ -57,7 +63,6 @@ router.get('/getfilesbypath', fetchUser, async (req, res) => {
 
   try {
     const files = await File.find({ path: req.header('path'), userId:req.user.id });
-    // console.log("Sari files yahan hai")
     res.json(files);
   } catch (error) {
     res.status(500).send(error);
