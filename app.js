@@ -57,8 +57,8 @@ app.use('/files',files);
 app.use('/folders',folders);
 
 
-const port = 80;
+const PORT=process.env.PORT || 80
 
-app.listen(port, () => {
-    console.log(`The express app is running on port ${port}`);
+app.listen(PORT, () => {
+    console.log(`The express app is running on port ${PORT}`);
 })
