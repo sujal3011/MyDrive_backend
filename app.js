@@ -1,13 +1,24 @@
 const express = require("express");
 const path = require('path');
+
+const passport=require('passport');
+const session = require('express-session');
+require("./config/passport-setup");
+
 const mongoose = require('mongoose');
 const methodOverride = require('method-override');
 const bodyParser = require("body-parser");
 require('dotenv').config();
 const cors = require('cors');
-const passport=require('passport')
 
 const app = express();
+
+app.use(cors())
+
+//using passport and express-session
+app.use(session({ secret: process.env.SESSION_SECRET })); // session secret
+app.use(passport.initialize());
+app.use(passport.session())
 
 // middlewares
 
@@ -17,15 +28,12 @@ app.use(methodOverride("_method"));
 
 const mongoURL = process.env.MONGO_URL
 
-// const mongoURL = "mongodb://localhost:27017/MyDrive";
-
 
 const conn = mongoose.connect(mongoURL,()=>{
     console.log("Successfully connected to mongo");
 });
 
 
-app.use(cors())
 
 app.use((req, res, next)=>{
     res.setHeader('Access-Control-Allow-Origin', '*');

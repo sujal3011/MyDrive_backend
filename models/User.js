@@ -9,6 +9,8 @@ const UserSchema = new mongoose.Schema({
         unique: true,
     },
     password: String,
+    profile_photo : String,
+
     
 },{ timestamps: true });
 const User=mongoose.model('user', UserSchema)
