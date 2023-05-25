@@ -37,6 +37,7 @@ router.post('/createUser', [
     name: req.body.name,
     email: req.body.email,
     password:secPass,
+    profile_photo:req.body.profile_photo,
   })
 
   const data={

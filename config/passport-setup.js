@@ -22,7 +22,7 @@ passport.use(new GoogleStrategy({
     profileFields: ['emails']
 
   }, async (accessToken, refreshToken, profile, cb)=> {
-    // console.log(profile);
+    console.log(profile);
     const user = await User.findOne({ email : profile._json.email });
     if(user){
 
@@ -34,6 +34,7 @@ passport.use(new GoogleStrategy({
       let user = await User.create({
         name:profile.displayName,
         email:profile.emails[0].value,
+        profile_photo : profile.photos[0].value,
       })
 
       return cb(null,user);
