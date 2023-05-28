@@ -9,7 +9,7 @@ const FileSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    file_name: {
+    file_id: {
         type: String,
         required: true,
     },

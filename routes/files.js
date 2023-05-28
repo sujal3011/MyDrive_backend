@@ -10,29 +10,29 @@ const mongoURL = process.env.MONGO_URL
 
 const conn = mongoose.createConnection(mongoURL);
 
-let gfs, gridfsBucket;
+let gfs;
 conn.once('open', () => {
 
 
-  gridfsBucket = new mongoose.mongo.GridFSBucket(conn.db, {
+  gfs = new mongoose.mongo.GridFSBucket(conn.db, {
     bucketName: 'uploads'
   });
 
-  gfs = Grid(conn.db, mongoose.mongo);
-  gfs.collection("uploads");
+  // gfs = Grid(conn.db, mongoose.mongo);
+  // gfs.collection("uploads");
 
-})
-
-
+});
 
 // Uploading a new file
 
 router.post('/upload', fetchUser, upload.single('file'), async (req, res) => {
 
   try {
+    console.log(req.file);
+    console.log(req.file.id.toString());
 
     const newFile = new File({
-      userId: req.user.id, original_name: req.file.originalname, file_name: req.file.filename, path: req.header('path'), uploadDate: req.file.uploadDate
+      userId: req.user.id, original_name: req.file.originalname, file_id: req.file.id.toString(), path: req.header('path'), uploadDate: req.file.uploadDate
     })
   
     const savedFile = await newFile.save();
@@ -41,9 +41,6 @@ router.post('/upload', fetchUser, upload.single('file'), async (req, res) => {
   } catch (error) {
     res.status(500).send(error)
   }
-  
-  
-
 })
 
 // Getting all original files
@@ -113,28 +110,37 @@ router.get('/image/:filename', (req, res) => {
 
 // Deleting a file
 
-router.delete('/deletefile/:id', (req, res) => {
+router.delete('/deletefile/:id',fetchUser, async (req, res) => {
 
   try {
 
-    // gfs.files.find({ _id: req.params.id }).toArray((err, files) => {
-    //   if (!files[0] || files.length === 0) {
-    //     return res.status(404).json({ error: "No file found" });
-    //   }
+    let file = await File.findById(req.params.id);
 
-    //   // File exists
-      
-    // })
-    
-    gfs.Delete({_id:req.params.id}, (error, data) => {
-      if (error) {
-        return res.status(404).json(error);
+    if(!file){
+      return res.status(404).send("File not found");
+    }
+
+    if(file.userId.toString()!==req.user.id){
+      return res.status(401).send("You are not authorized.");
+    }
+
+
+
+    file=await File.findByIdAndDelete(req.params.id);  //Deleting the reference of the file
+    // console.log(file);
+
+    gfs.delete(new mongoose.Types.ObjectId(file.file_id),
+      (error,data)=>{
+        if(error){
+          console.log(error);
+          return res.status(404).json(error);
+        }
+        res.status(200).json({
+          success:true,
+          message:`File has been sucessfully deleted`
+        })
       }
-      return res.status(200).json({
-        message: `File with id ${req.params.id} has been sucessfully deleted`
-      })
-    });
-    
+    )
 
   } catch (error) {
   res.status(500).json(error);
@@ -146,19 +152,6 @@ router.delete('/deletefile/:id', (req, res) => {
 router.put('/renamefile/:id',fetchUser,async (req,res)=>{
 
   const {name}=req.body
-
-  // try {
-
-  //   gfs.rename((req.params.id,"new name"), (error, file) => {
-  //     if (error) {
-  //       return res.status(404).json(error);
-  //     }
-  //     return res.status(200).json(file);
-  //   });
-    
-  // } catch (error) {
-  //   res.status(500).json(error);
-  // }
 
   try {
     const newFile={}
@@ -223,10 +216,5 @@ router.get('/fetchstarredfiles',fetchUser,async (req,res)=>{
     res.status(500).json(error);
   }
 })
-
-
-
-
-
 
 module.exports = router
