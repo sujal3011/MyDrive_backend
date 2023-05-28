@@ -189,7 +189,7 @@ router.put('/renamefile/:id',fetchUser,async (req,res)=>{
   }
 })
 
-router.put('/starFile/:id',async (req,res)=>{  //this is the id of the model and not of the original file
+router.put('/starFile/:id',fetchUser,async (req,res)=>{  //this is the id of the model and not of the original file
 
   try {
     const updatedFile=await File.findByIdAndUpdate({_id:req.params.id},{isStarred:true});
@@ -201,7 +201,7 @@ router.put('/starFile/:id',async (req,res)=>{  //this is the id of the model and
 
 })
 
-router.put('/removeStarFile/:id',async (req,res)=>{  //this is the id of the model and not of the original file
+router.put('/removeStarFile/:id',fetchUser,async (req,res)=>{  //this is the id of the model and not of the original file
 
   try {
     const updatedFile=await File.findByIdAndUpdate({_id:req.params.id},{isStarred:false});
@@ -214,9 +214,9 @@ router.put('/removeStarFile/:id',async (req,res)=>{  //this is the id of the mod
 })
 
 
-router.get('/fetchstarredfiles',async (req,res)=>{
+router.get('/fetchstarredfiles',fetchUser,async (req,res)=>{
   try {
-    const starredFiles=await File.find({isStarred:true});
+    const starredFiles=await File.find({isStarred:true,userId: req.user.id});
     res.json(starredFiles);
 
   } catch (error) {
