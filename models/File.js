@@ -13,10 +13,10 @@ const FileSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    // file_type:{
-    //     type:String,
-    //     required:true,
-    // },
+    file_type:{
+        type:String,
+        required:true,
+    },
     path:{
         type:String,
         required:true

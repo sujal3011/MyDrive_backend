@@ -23,16 +23,16 @@ conn.once('open', () => {
 
 });
 
-// Uploading a new file
+// POST: Uploading a new file
 
 router.post('/upload', fetchUser, upload.single('file'), async (req, res) => {
 
   try {
-    console.log(req.file);
-    console.log(req.file.id.toString());
+    // console.log(req.file);
+    // console.log(req.file.id.toString());
 
     const newFile = new File({
-      userId: req.user.id, original_name: req.file.originalname, file_id: req.file.id.toString(), path: req.header('path'), uploadDate: req.file.uploadDate
+      userId: req.user.id, original_name: req.file.originalname, file_id: req.file.id.toString(),file_type:req.file.contentType, path: req.header('path'), uploadDate: req.file.uploadDate
     })
   
     const savedFile = await newFile.save();
@@ -43,7 +43,7 @@ router.post('/upload', fetchUser, upload.single('file'), async (req, res) => {
   }
 })
 
-// Getting all original files
+// GET: Getting all original files
 
 router.get('/getallfiles', (req, res) => {
   gfs.files.find().toArray((err, files) => {  //find() function returns mongoose collection,toArray() function converts this collection to a normal array
@@ -55,7 +55,7 @@ router.get('/getallfiles', (req, res) => {
 })
 
 
-// Getting all files of a particular path
+// GET: Getting all files of a particular path
 router.get('/getfilesbypath', fetchUser, async (req, res) => {
 
   try {
@@ -67,48 +67,44 @@ router.get('/getfilesbypath', fetchUser, async (req, res) => {
 
 })
 
-//Getting a original file by its filename
 
-// router.get('/:filename', (req, res) => {
-//   gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
-//     // Check if file
-//     if (!file || file.length === 0) {
-//       return res.status(404).json({
-//         err: 'No file exists'
-//       });
-//     }
-//     // File exists
-//     return res.json(file);
-//   });
-// });
+// GET: Fetching a particular image and displaying it on browser
 
+router.get('/image/:id',async  (req, res) => {
 
-//Displaying the image
+  try {
+    
+    let referenceFile = await File.findById(req.params.id);
+    // console.log(new mongoose.Types.ObjectId(referenceFile.file_id));
+  
+    gfs.find({ _id: new mongoose.Types.ObjectId(referenceFile.file_id) }).toArray( (err, files) => {
+      // Check if file
+      if (!files[0] || files.length === 0) {
+        return res.status(404).json({
+          err: 'No file exists'
+        });
+      }
+  
+      // Check if image
+      if (files[0].contentType === 'image/jpeg' || files[0].contentType === 'image/png' || files[0].contentType === 'image/svg+xml') {
+       
+        // Read output to browser
+        const readStream = gfs.openDownloadStream(files[0]._id);
+        readStream.pipe(res);
+      } else {
+        res.status(404).json({
+          err: 'Not an image'
+        });
+      }
+    });
 
-router.get('/image/:filename', (req, res) => {
-  gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
-    // Check if file
-    if (!file || file.length === 0) {
-      return res.status(404).json({
-        err: 'No file exists'
-      });
-    }
-
-    // Check if image
-    if (file.contentType === 'image/jpeg' || file.contentType === 'image/png') {
-      // Read output to browser
-      const readStream = gridfsBucket.openDownloadStream(file._id);
-      readStream.pipe(res);
-    } else {
-      res.status(404).json({
-        err: 'Not an image'
-      });
-    }
-  });
+  } catch (error) {
+    res.status(500).json(error);
+  }
 });
 
 
-// Deleting a file
+// DELETE: Deleting a particular file
 
 router.delete('/deletefile/:id',fetchUser, async (req, res) => {
 
@@ -119,17 +115,13 @@ router.delete('/deletefile/:id',fetchUser, async (req, res) => {
     if(!file){
       return res.status(404).send("File not found");
     }
-
     if(file.userId.toString()!==req.user.id){
       return res.status(401).send("You are not authorized.");
     }
-
-
-
     file=await File.findByIdAndDelete(req.params.id);  //Deleting the reference of the file
     // console.log(file);
 
-    gfs.delete(new mongoose.Types.ObjectId(file.file_id),
+    gfs.delete(new mongoose.Types.ObjectId(file.file_id),  //Deleting the original file from the database
       (error,data)=>{
         if(error){
           console.log(error);
@@ -149,24 +141,17 @@ router.delete('/deletefile/:id',fetchUser, async (req, res) => {
 
 })
 
+// PUT : Renaming a particular file 
+
 router.put('/renamefile/:id',fetchUser,async (req,res)=>{
 
   const {name}=req.body
 
   try {
-    const newFile={}
-    let subArray=newFile.original_name.split(".");
-    let type=subArray[subArray.length-1];
-    if(name) {
-      let new_name=name.concat(".",type);
-      newFile.original_name=new_name;
+  
+  let file = await File.findById(req.params.id);
 
-
-    }
-
-    let file = await File.findById(req.params.id);
-
-    if (!file) {
+  if (!file) {
       return res.status(404).send("Not found");
   }
 
@@ -174,13 +159,24 @@ router.put('/renamefile/:id',fetchUser,async (req,res)=>{
       return res.status(401).send("Not allowed");
   }
 
+  const newFile={};
+  let subArray=file.original_name.split(".");
+  let type=subArray[subArray.length-1];
+  if(name){
+    let new_name=name.concat(".",type);
+    newFile.original_name = new_name;
+  }
+
   file = await File.findByIdAndUpdate(req.params.id, { $set: newFile }, { new: true });
         res.json(file);
     
   } catch (error) {
+    console.log(error);
     res.status(500).json(error)
   }
 })
+
+// PUT: Marking a particular file as starred
 
 router.put('/starFile/:id',fetchUser,async (req,res)=>{  //this is the id of the model and not of the original file
 
@@ -194,6 +190,8 @@ router.put('/starFile/:id',fetchUser,async (req,res)=>{  //this is the id of the
 
 })
 
+// PUT : Removing a particular file from starred
+
 router.put('/removeStarFile/:id',fetchUser,async (req,res)=>{  //this is the id of the model and not of the original file
 
   try {
@@ -206,6 +204,7 @@ router.put('/removeStarFile/:id',fetchUser,async (req,res)=>{  //this is the id 
 
 })
 
+// GET : Fetching all starred files 
 
 router.get('/fetchstarredfiles',fetchUser,async (req,res)=>{
   try {
