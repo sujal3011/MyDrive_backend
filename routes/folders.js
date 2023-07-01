@@ -9,7 +9,9 @@ const { body, validationResult } = require('express-validator');
 
 router.get('/getfolders', fetchUser, async (req, res) => {
     try {
-        const folders = await Folder.find({ user: req.user.id, path:req.header("path") });
+        const {query}=req.query;
+        const regexPattern= new RegExp(query,'i');
+        const folders = await Folder.find({ name: { $regex: regexPattern },user: req.user.id, path:req.header("path") });
         res.json(folders);
     } catch (error) {
         res.status(500).send("Internal server error")
@@ -114,7 +116,9 @@ router.put('/removestarFolder/:id',fetchUser, async (req, res) => {
 
 router.get('/fetchstarredfolders',fetchUser, async (req, res) => {
     try {
-        const starredFolders = await Folder.find({ user: req.user.id,isStarred: true });
+        const {query}=req.query;
+        const regexPattern= new RegExp(query,'i');
+        const starredFolders = await Folder.find({ user: req.user.id,isStarred: true,name: { $regex: regexPattern } });
         res.json(starredFolders);
 
     } catch (error) {

@@ -5,6 +5,8 @@ const Grid = require('gridfs-stream');
 const mongoose = require('mongoose');
 const File = require('../models/File');
 const fetchUser = require('../middleware/fetchUser');
+const fs = require('fs');
+const readline = require('readline');
 
 const mongoURL = process.env.MONGO_URL
 
@@ -28,8 +30,7 @@ conn.once('open', () => {
 router.post('/upload', fetchUser, upload.single('file'), async (req, res) => {
 
   try {
-    // console.log(req.file);
-    // console.log(req.file.id.toString());
+
 
     const newFile = new File({
       userId: req.user.id, original_name: req.file.originalname, file_id: req.file.id.toString(),file_type:req.file.contentType, path: req.header('path'), uploadDate: req.file.uploadDate
@@ -59,7 +60,9 @@ router.get('/getallfiles', (req, res) => {
 router.get('/getfilesbypath', fetchUser, async (req, res) => {
 
   try {
-    const files = await File.find({ path: req.header('path'), userId:req.user.id });
+    const {query}=req.query;
+    const regexPattern= new RegExp(query,'i');
+    const files = await File.find({ original_name: { $regex: regexPattern },path: req.header('path'), userId:req.user.id });
     res.json(files);
   } catch (error) {
     res.status(500).send(error);
@@ -102,6 +105,46 @@ router.get('/image/:id',async  (req, res) => {
     res.status(500).json(error);
   }
 });
+
+// GET: Downloading a particular image
+
+// router.get('/downloadfile/:id',async  (req, res) => {
+
+//   try {
+    
+//     let referenceFile = await File.findById(req.params.id);
+  
+//     gfs.find({ _id: new mongoose.Types.ObjectId(referenceFile.file_id) }).toArray( (err, files) => {
+//       // Check if file
+//       if (!files[0] || files.length === 0) {
+//         return res.status(404).json({
+//           err: 'No file exists'
+//         });
+//       }
+       
+//       const readStream = gfs.openDownloadStream(files[0]._id);
+//       console.log(readStream);
+
+//       const outputPath = './demo2.txt';
+
+//       const writeStream = fs.createWriteStream(outputPath);
+//         console.log(writeStream);
+//         readStream.pipe(writeStream);
+
+//         writeStream.on('finish', () => {
+//           console.log('File downloaded successfully.');
+//         });
+        
+//         writeStream.on('error', (err) => {
+//           console.error('Error writing file:', err);
+//         });
+      
+//     });
+
+//   } catch (error) {
+//     res.status(500).json(error);
+//   }
+// });
 
 
 // DELETE: Deleting a particular file
@@ -208,7 +251,9 @@ router.put('/removeStarFile/:id',fetchUser,async (req,res)=>{  //this is the id 
 
 router.get('/fetchstarredfiles',fetchUser,async (req,res)=>{
   try {
-    const starredFiles=await File.find({isStarred:true,userId: req.user.id});
+    const {query}=req.query;
+    const regexPattern= new RegExp(query,'i');
+    const starredFiles=await File.find({isStarred:true,userId: req.user.id,original_name: { $regex: regexPattern }});
     res.json(starredFiles);
 
   } catch (error) {
