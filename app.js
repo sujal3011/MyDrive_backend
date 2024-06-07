@@ -59,10 +59,13 @@ app.get('/', (req, res) => {
 const auth=require('./routes/auth')
 const files=require('./routes/files');
 const folders=require('./routes/folders');
+const share=require('./routes/share');
 
 app.use('/auth',auth);
 app.use('/files',files);
 app.use('/folders',folders);
+app.use('/share',share);
+
 
 
 const PORT=process.env.PORT || 80
