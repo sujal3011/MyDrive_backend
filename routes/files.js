@@ -256,4 +256,58 @@ router.get('/fetchstarredfiles', fetchUser, async (req, res) => {
   }
 })
 
+router.put('/bin/move/:id',async (req,res)=>{
+
+  const id=req.params.id;
+  try {
+      
+      const file=await File.findByIdAndUpdate(id,{
+          isDeleted:true,
+          deletionDate:new Date(),
+      });
+  
+      if(!file){
+          return res.status(404).json({success:false,error:"File not found"});
+      }
+      return res.status(200).json({success:true,message:"File moved to bin successfully"});
+  } catch (error) {
+      return res.status(500).json({success:false,error:"Internal Server Error"});
+  }
+
+})
+
+router.put('/bin/restore/:id',async (req,res)=>{
+
+  const id=req.params.id;
+  try {
+      
+      const file=await File.findByIdAndUpdate(id,{
+          isDeleted:false,
+          deletionDate: null,
+      });
+  
+      if(!file){
+          return res.status(404).json({success:false,error:"File not found"});
+      }
+      return res.status(200).json({success:true,message:"File restored from bin successfully"});
+  } catch (error) {
+      return res.status(500).json({success:false,error:"Internal Server Error"});
+  }
+
+})
+
+router.get('/bin',fetchUser, async (req, res) => {
+  try {
+
+      const { query } = req.query;
+      const regexPattern = new RegExp(query, 'i');
+      const files = await File.find({ isDeleted: true, userId: req.user.id, original_name: { $regex: regexPattern } });
+      res.json(files);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+});
+
+
+
 module.exports = router

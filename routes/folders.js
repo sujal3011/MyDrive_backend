@@ -149,6 +149,57 @@ router.delete('/deletefolder/:id', fetchUser, async (req, res) => {
     }
 })
 
+router.put('/bin/move/:id',async (req,res)=>{
+
+    const id=req.params.id;
+
+    try {
+        
+        const folder=await Folder.findByIdAndUpdate(id,{
+            isDeleted:true,
+            deletionDate:new Date(),
+        });
+    
+        if(!folder){
+            return res.status(404).json({success:false,error:"Folder not found"});
+        }
+        return res.status(200).json({success:true,message:"Folder moved to bin successfully"});
+    } catch (error) {
+        return res.status(500).json({success:false,error:"Internal Server Error"});
+    }
+
+})
+
+router.put('/bin/restore/:id',fetchUser,async (req,res)=>{
+
+    try {
+
+        let folder = await Folder.findById(req.params.id);
+        if (!folder) {
+            return res.status(404).send("Not found");
+        }
+
+        if (req.user.id !== folder.user.toString()) {
+            return res.status(401).send("Not allowed");
+        }
+        const updatedFolder = await Folder.findByIdAndUpdate({ _id: req.params.id },{ isDeleted: false });
+        return res.status(200).json({success:true,message:"Folder restored from bin successfully"});
+    } catch (error) {
+        return res.status(500).json(error);
+    }
+
+})
+
+router.get('/bin',fetchUser, async (req, res) => {
+    try {
+        const {query}=req.query;
+        const regexPattern= new RegExp(query,'i');
+        const folders = await Folder.find({ user: req.user.id,isDeleted: true,name: { $regex: regexPattern } });
+        res.json(folders);
+    } catch (error) {
+        res.status(500).json(error);   
+    }
+});
 
 
 module.exports = router

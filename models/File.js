@@ -28,6 +28,13 @@ const FileSchema = new mongoose.Schema({
     uploadDate:{
         type:Date,
         default:Date.now
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletionDate: {
+        type: Date
     }
 
 }, { timestamps: true });

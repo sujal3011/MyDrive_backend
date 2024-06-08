@@ -18,6 +18,13 @@ const FolderSchema = new mongoose.Schema({
     isStarred:{
         type:Boolean,
         default:false
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletionDate: {
+        type: Date
     }
    
 }, { timestamps: true });
