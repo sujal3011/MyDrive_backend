@@ -276,24 +276,24 @@ router.put('/bin/move/:id',async (req,res)=>{
 
 })
 
-router.put('/bin/restore/:id',async (req,res)=>{
+router.put('/bin/restore/:id',fetchUser,async (req,res)=>{
 
-  const id=req.params.id;
   try {
-      
-      const file=await File.findByIdAndUpdate(id,{
-          isDeleted:false,
-          deletionDate: null,
-      });
-  
-      if(!file){
-          return res.status(404).json({success:false,error:"File not found"});
-      }
-      return res.status(200).json({success:true,message:"File restored from bin successfully"});
-  } catch (error) {
-      return res.status(500).json({success:false,error:"Internal Server Error"});
-  }
 
+    let file = await File.findById(req.params.id);
+    if (!file) {
+        return res.status(404).send("Not found");
+    }
+
+    if (req.user.id !== file.userId.toString()) {
+        return res.status(401).send("Not allowed");
+    }
+    const updatedFile = await File.findByIdAndUpdate({ _id: req.params.id },{ isDeleted: false });
+    return res.status(200).json({success:true,message:"File restored from bin successfully"});
+} catch (error) {
+    console.log(error);
+    return res.status(500).json(error);
+}
 })
 
 router.get('/bin',fetchUser, async (req, res) => {
