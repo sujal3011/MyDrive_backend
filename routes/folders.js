@@ -2,7 +2,20 @@ const express = require("express");
 const fetchUser = require("../middleware/fetchUser");
 const router = express.Router();
 const Folder = require("../models/Folder");
+const File = require('../models/File');
+const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
+
+const mongoURL = process.env.MONGO_URL
+const conn = mongoose.createConnection(mongoURL);
+let gfs;
+conn.once('open', () => {
+
+  gfs = new mongoose.mongo.GridFSBucket(conn.db, {
+    bucketName: 'uploads'
+  });
+
+});
 
 
 // ROUTE-1---->getting all the folders of the user of the particular path
@@ -126,25 +139,49 @@ router.get('/fetchstarredfolders',fetchUser, async (req, res) => {
     }
 })
 
-// TO DO
-//CREATING ENDPOINT FOR DELETING FOLDER
+
+const deleteFile= async (fileId) => {
+
+    let file = await File.findById(fileId);
+    file = await File.findByIdAndDelete(fileId);
+
+    gfs.delete(new mongoose.Types.ObjectId(file.file_id),
+      (error, data) => {
+        if (error) {
+          console.log(error);
+          throw new Error('Error deleting file from database');
+        }
+      }
+    )
+} 
+
+const deleteFolderAndContents = async (folderId, userId) => {
+
+    const childFolders = await Folder.find({ path: new RegExp(`^/folders/${folderId}`), user: userId });
+
+    for (const childFolder of childFolders) {
+        await deleteFolderAndContents(childFolder._id, userId);
+    }
+    const files = await File.find({ path: new RegExp(`^/folders/${folderId}`), userId });
+    for (const file of files){
+        await deleteFile(file._id);
+    } 
+    await Folder.findByIdAndDelete(folderId);
+};
 
 router.delete('/deletefolder/:id', fetchUser, async (req, res) => {
 
     try {
-        let folder = await Folder.findById(req.params.id);
+        const folder = await Folder.findById(req.params.id);
 
-        if (!folder) {
-            return res.status(404).send("Not found");
-        }
-
+        if (!folder) return res.status(404).send("Folder not found");
         if (req.user.id !== folder.user.toString()) {
             return res.status(401).send("Not allowed");
         }
-
-        folder = await Folder.findByIdAndDelete(req.params.id);
-        res.json(folder);
+        await deleteFolderAndContents(folder._id, req.user.id);
+        res.json({ success: true, message: "Folder and its contents deleted successfully" });
     } catch (error) {
+        console.error(error.message);
         res.status(500).send("Internal server error");
     }
 })
@@ -152,9 +189,7 @@ router.delete('/deletefolder/:id', fetchUser, async (req, res) => {
 router.put('/bin/move/:id',async (req,res)=>{
 
     const id=req.params.id;
-
     try {
-        
         const folder=await Folder.findByIdAndUpdate(id,{
             isDeleted:true,
             deletionDate:new Date(),
