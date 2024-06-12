@@ -2,6 +2,7 @@ const express=require('express');
 const router=express.Router();
 const User=require('../models/User');
 const Share=require('../models/Share');
+const mongoose = require('mongoose');
 
 // Authentication required: only owner and editor can share the item
 // POST:Sharing item
@@ -35,7 +36,7 @@ router.post('/', async (req,res)=>{
     } catch (error) {
         res.status(501).send({success:false,error});
     }
-})
+});
 
 //GET:Fetching all items shared with a user
 router.get('/:userId', async (req,res)=>{
@@ -63,7 +64,7 @@ router.get('/:userId', async (req,res)=>{
     } catch (error) {
         res.status(501).send({success:false,error});
     }
-})
+});
 
 router.get('/item/:itemId/users', async (req,res)=>{
     try {
@@ -84,7 +85,43 @@ router.get('/item/:itemId/users', async (req,res)=>{
     } catch (error) {
         res.status(501).send({success:false,error});
     }
-})
+});
+
+router.post('/item/:itemId/updatePermissions', async (req, res) => {
+    const { itemType, permissions } = req.body;
+    const itemId = req.params.itemId;
+  
+    try {
+      for (const [userId, permission] of Object.entries(permissions)) {
+        const permissionStatus = (permission=='Viewer' ? 'view' : 'edit'); 
+
+        if (permission === 'Remove access') {
+            await Share.deleteOne({ itemId, sharedWith: userId });
+            continue;
+        }
+        const existingShare = await Share.findOne({ itemId, sharedWith: userId });
+  
+        if (existingShare) {
+          existingShare.PermissionStatus = permissionStatus;
+          await existingShare.save();
+        } else {
+          const newShare = new Share({
+            itemId,
+            itemType,
+            sharedWith: mongoose.Types.ObjectId(userId),
+            PermissionStatus: permissionStatus,
+          });
+  
+          await newShare.save();
+        }
+      }
+
+      res.status(200).json({ success: true, message: 'Permissions updated successfully.' });
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      res.status(500).json({ success: false, message: 'An error occurred while updating permissions.' });
+    }
+});
 
 
 
