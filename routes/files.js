@@ -4,6 +4,7 @@ const upload = require('../middleware/upload');
 const Grid = require('gridfs-stream');
 const mongoose = require('mongoose');
 const File = require('../models/File');
+const Share = require('../models/Share');
 const fetchUser = require('../middleware/fetchUser');
 const fs = require('fs');
 const readline = require('readline');
@@ -105,7 +106,7 @@ router.get('/image/:id', async (req, res) => {
   }
 });
 
-//GET: Downloading a particular image
+//GET: Downloading a particular file
 
 router.get('/downloadfile/:id', async (req, res) => {
 
@@ -136,6 +137,32 @@ router.get('/downloadfile/:id', async (req, res) => {
       downloadStream.pipe(res);
     });
 
+  } catch (error) {
+    res.status(500).json(error);
+  }
+});
+
+// GET: Fetching a particular file for previewing
+router.get('/preview/:id', async (req, res) => {
+  try {
+    let referenceFile = await File.findById(req.params.id);
+    gfs.find({ _id: new mongoose.Types.ObjectId(referenceFile.file_id) }).toArray((err, files) => {
+      if (!files[0] || files.length === 0) {
+        return res.status(404).json({ err: 'No file exists' });
+      }
+      const file = files[0];
+      const readStream = gfs.openDownloadStream(file._id);
+      if (file.contentType.includes('image') || file.contentType === 'application/pdf' || file.contentType.includes('video')) {
+        res.set('Content-Type', file.contentType);
+        readStream.pipe(res);
+      } else {
+        res.set({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="${referenceFile.original_name}"`,
+        });
+        readStream.pipe(res);
+      }
+    });
   } catch (error) {
     res.status(500).json(error);
   }
@@ -307,6 +334,26 @@ router.get('/bin',fetchUser, async (req, res) => {
     res.status(500).json(error);
   }
 });
+
+router.get('/shared-with-me', fetchUser, async (req, res) => {
+  try {
+    const { query } = req.query;
+    let searchFilter = { sharedWith: req.user.id, itemType: 'file' };
+    const sharedFiles = await Share.find(searchFilter).exec();
+
+    const fileIds = sharedFiles.map(share => share.itemId);
+    let fileFilter = { _id: { $in: fileIds } };
+    if (query) {
+        fileFilter.original_name = { $regex: query, $options: 'i' };
+    }
+    const files = await File.find(fileFilter).exec();
+    res.status(200).json(files);
+} catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+}
+})
+
 
 
 

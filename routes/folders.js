@@ -3,6 +3,7 @@ const fetchUser = require("../middleware/fetchUser");
 const router = express.Router();
 const Folder = require("../models/Folder");
 const File = require('../models/File');
+const Share = require('../models/Share');
 const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 
@@ -235,6 +236,26 @@ router.get('/bin',fetchUser, async (req, res) => {
         res.status(500).json(error);   
     }
 });
+
+router.get('/shared-with-me',fetchUser, async (req, res) => {
+
+    try {
+        const { query } = req.query;
+        let searchFilter = { sharedWith: req.user.id, itemType: 'folder' };
+        const sharedFolders = await Share.find(searchFilter).exec();
+        const folderIds = sharedFolders.map(share => share.itemId);
+
+        let folderFilter = { _id: { $in: folderIds } };
+        if (query) {
+            folderFilter.name = { $regex: query, $options: 'i' };
+        }
+        const folders = await Folder.find(folderFilter).exec();       
+        res.status(200).json(folders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
 
 
 module.exports = router
