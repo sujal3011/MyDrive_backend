@@ -257,5 +257,23 @@ router.get('/shared-with-me',fetchUser, async (req, res) => {
     }
 })
 
+router.get('/:id/owner', async (req, res) => {
+    try {
+      const folderId = req.params.id;
+      const folder = await Folder.findById(folderId).populate('user');
+      if (!folder) {
+        return res.status(404).json({ message: 'Folder not found' });
+      }
+  
+      const owner = folder.user;
+      if (!owner) {
+        return res.status(404).json({ message: 'Owner not found' });
+      }
+      return res.status(200).json({success:true,owner:owner});
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error });
+    }
+  });
+
 
 module.exports = router

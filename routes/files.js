@@ -152,6 +152,7 @@ router.get('/preview/:id', async (req, res) => {
       }
       const file = files[0];
       const readStream = gfs.openDownloadStream(file._id);
+      console.log("type:",file.contentType);
       if (file.contentType.includes('image') || file.contentType === 'application/pdf' || file.contentType.includes('video')) {
         res.set('Content-Type', file.contentType);
         readStream.pipe(res);
@@ -353,6 +354,24 @@ router.get('/shared-with-me', fetchUser, async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
 }
 })
+
+router.get('/:id/owner', async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    const file = await File.findById(fileId).populate('userId');
+    if (!file) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    const owner = file.userId;
+    if (!owner) {
+      return res.status(404).json({ message: 'Owner not found' });
+    }
+    return res.status(200).json({success:true,owner:owner});
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
 
 
 
